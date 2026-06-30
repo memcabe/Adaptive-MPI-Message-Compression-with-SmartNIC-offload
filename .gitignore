@@ -1,0 +1,13 @@
+# ignore everything inside benchmarks/datasets
+benchmarks/datasets/**
+
+# reframe output directories
+benchmarks/tests/codecs/output/
+benchmarks/tests/codecs/perflogs/
+benchmarks/tests/codecs/stage/
+
+# python bytecode
+benchmarks/tests/codecs/__pycache__/
+
+# keep the directory placeholder
+!benchmarks/datasets/.gitkeep
