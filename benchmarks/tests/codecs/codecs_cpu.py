@@ -48,7 +48,7 @@ if not compressor_scripts:
 if not dataset_files:
     dataset_files = ['__missing_dataset__']
 
-CSV_FILE = "cpu_results.csv"
+CSV_FILE = "benchmk_rslts/cpu_results.csv"
 
 
 @rfm.simple_test
