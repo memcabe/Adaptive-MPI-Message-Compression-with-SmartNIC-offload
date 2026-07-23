@@ -1,25 +1,35 @@
 import os
 import glob
+import csv
+import re
 
 import reframe as rfm
 import reframe.utility.sanity as sn
 from reframe.core.builtins import *
 
+
 def discover_datasets(root):
     datasets = []
 
-    for entry in os.scandir(root):
-        if entry.is_file():
-            datasets.append(entry.path)
+    for dirpath, dirnames, filenames in os.walk(root):
+        # Don't descend into hidden directories
+        dirnames[:] = [
+            d for d in dirnames
+            if not d.startswith('.')
+        ]
 
-        elif entry.is_dir():
-            for dirpath, _, filenames in os.walk(entry.path):
-                for f in filenames:
-                    datasets.append(
-                        os.path.join(dirpath, f)
-                    )
+        for filename in filenames:
+            # Ignore hidden files (.gitkeep, .DS_Store, etc.)
+            if filename.startswith('.'):
+                continue
+
+            path = os.path.join(dirpath, filename)
+
+            if os.path.isfile(path):
+                datasets.append(path)
 
     return sorted(datasets)
+
 
 CODEC_DIR = os.path.join(
     os.path.dirname(__file__),
@@ -27,7 +37,7 @@ CODEC_DIR = os.path.join(
     'codecs'
 )
 
-DATASET_DIR = "/home/memcabe/compression/benchmarks/datasets"
+DATASET_DIR = "/home/memcabe/compression/MPI_Offload/benchmarks/datasets"
 
 compressor_scripts = sorted(glob.glob(f'{CODEC_DIR}/*.sh'))
 dataset_files = discover_datasets(DATASET_DIR)
@@ -37,6 +47,8 @@ if not compressor_scripts:
 
 if not dataset_files:
     dataset_files = ['__missing_dataset__']
+
+CSV_FILE = "cpu_results.csv"
 
 
 @rfm.simple_test
@@ -49,6 +61,29 @@ class CompressionBenchmark(rfm.RunOnlyRegressionTest):
     valid_prog_environs = ['*']
 
     executable = 'bash'
+
+    CSV_COLUMNS = [
+        (
+            "compression_time_us",
+            r'time:compress_many\s+<uint32>\s*=\s*([0-9.]+)'
+        ),
+        (
+            "decompression_time_us",
+            r'time:decompress_many\s+<uint32>\s*=\s*([0-9.]+)'
+        ),
+        (
+            "compression_ratio",
+            r'size:compression_ratio\s+<double>\s*=\s*([0-9.]+)'
+        ),
+        (
+            "compression_throughput_MBps",
+            r'composite:compression_rate_many\s+<[^>]+>\s*=\s*([0-9.]+)'
+        ),
+        (
+            "decompression_throughput_MBps",
+            r'composite:decompression_rate_many\s+<[^>]+>\s*=\s*([0-9.]+)'
+        ),
+    ]
 
     @run_after('init')
     def setup_run(self):
@@ -67,37 +102,36 @@ class CompressionBenchmark(rfm.RunOnlyRegressionTest):
     def validate_run(self):
         return sn.assert_found(r'STATUS=PASS', self.stdout)
 
-    def compression_time(self):
-        return sn.extractsingle(
-        r'time:compress_many <uint32> = ([0-9.]+)',
-        self.stderr,
-        1,
-        float
-    )
+    @run_after('sanity')
+    def append_results_csv(self):
 
-    @performance_function('s')
-    def decompression_time(self):
-        return sn.extractsingle(
-            r'decompression_time:\s*([0-9.]+)',
-            self.stderr,
-            1,
-            float
-        )
+        errfile = os.path.join(self.stagedir, "rfm_job.err")
 
-    @performance_function('')
-    def compression_ratio(self):
-        return sn.extractsingle(
-            r'compression_ratio:\s*([0-9.]+)',
-            self.stderr,
-            1,
-            float
-        )
+        with open(errfile, "r") as f:
+            err = f.read()
 
-    @performance_function('MB/s')
-    def throughput(self):
-        return sn.extractsingle(
-            r'throughput:\s*([0-9.]+)',
-            self.stdout,
-            1,
-            float
-        )
+        write_header = not os.path.exists(CSV_FILE)
+
+        row = [
+            os.path.basename(self.compressor),
+            os.path.basename(self.dataset),
+        ]
+
+        for _, regex in self.CSV_COLUMNS:
+            match = re.search(regex, err)
+
+            if match:
+                row.append(float(match.group(1)))
+            else:
+                row.append(None)
+
+        with open(CSV_FILE, "a", newline="") as f:
+            writer = csv.writer(f)
+
+            if write_header:
+                writer.writerow(
+                    ["compressor", "dataset"] +
+                    [name for name, _ in self.CSV_COLUMNS]
+                )
+
+            writer.writerow(row)
