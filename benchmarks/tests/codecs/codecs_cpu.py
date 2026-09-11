@@ -12,14 +12,12 @@ def discover_datasets(root):
     datasets = []
 
     for dirpath, dirnames, filenames in os.walk(root):
-        # Don't descend into hidden directories
         dirnames[:] = [
             d for d in dirnames
             if not d.startswith('.')
         ]
 
         for filename in filenames:
-            # Ignore hidden files (.gitkeep, .DS_Store, etc.)
             if filename.startswith('.'):
                 continue
 

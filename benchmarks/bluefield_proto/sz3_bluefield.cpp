@@ -62,6 +62,10 @@ bool init_doca(BlueFieldContext& ctx)
 
     if(result != DOCA_SUCCESS)
         return false;
+    
+    // Doca memory permissions
+    // look into later
+    // doca_mmap_set_permissions(DOCA_ACCESS_DPU_READ_WRITE)
 
     // Buffer inventory
 
@@ -148,7 +152,7 @@ bool register_host_buffer(
     return true;
 }
 
-// Main benchmark
+// Benchmark
 
 int main(int argc, char** argv)
 {
