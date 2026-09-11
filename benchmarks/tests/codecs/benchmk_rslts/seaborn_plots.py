@@ -12,11 +12,7 @@ PLOT_DIR = "plots"
 
 os.makedirs(PLOT_DIR, exist_ok=True)
 
-
-# ------------------------------------------------------------
 # Load results
-# ------------------------------------------------------------
-
 df = pd.read_csv(CSV_FILE)
 
 # Remove ".sh" from compressor names
@@ -25,10 +21,7 @@ df["compressor"] = (
       .str.replace(".sh", "", regex=False)
 )
 
-
-# ------------------------------------------------------------
 # Statistics
-# ------------------------------------------------------------
 
 stats = (
     df.groupby("compressor")
@@ -118,15 +111,8 @@ stats = (
       .reset_index()
 )
 
-
-# ------------------------------------------------------------
 # Coefficient of variation
-#
 # CV = standard deviation / mean
-#
-# This makes it easier to compare variability between
-# compressors with very different absolute timings.
-# ------------------------------------------------------------
 
 stats["compression_time_cv"] = (
     stats["compression_time_std"]
@@ -153,17 +139,8 @@ stats["decompression_throughput_cv"] = (
     / stats["decompression_throughput_mean"]
 )
 
-
-# ------------------------------------------------------------
 # 95% confidence interval
-#
-# Approximation using:
-#
 # mean ± 1.96 * (std / sqrt(n))
-#
-# This is reasonable for a first pass when you have
-# multiple independent benchmark runs.
-# ------------------------------------------------------------
 
 for metric in [
     "compression_time_us",
@@ -203,20 +180,14 @@ stats.to_csv(
     index=False
 )
 
-
-# ------------------------------------------------------------
 # Seaborn configuration
-# ------------------------------------------------------------
 
 sns.set_theme(
     style="whitegrid",
     context="talk"
 )
 
-
-# ------------------------------------------------------------
 # Metrics to plot
-# ------------------------------------------------------------
 
 metrics = [
     (
@@ -246,19 +217,11 @@ metrics = [
     )
 ]
 
-
-# ------------------------------------------------------------
 # Generate plots
-# ------------------------------------------------------------
 
 for column, title, unit in metrics:
 
-    # --------------------------------------------------------
     # Bar plot
-    #
-    # Shows mean ± standard deviation.
-    # Individual measurements are overlaid as points.
-    # --------------------------------------------------------
 
     plt.figure(figsize=(12, 7))
 
@@ -282,7 +245,7 @@ for column, title, unit in metrics:
     )
 
     ax.set_title(
-        f"{title}: Mean ± Standard Deviation"
+        f"{title}: Mean +- Standard Deviation"
     )
 
     ax.set_xlabel("Compressor")
@@ -308,16 +271,7 @@ for column, title, unit in metrics:
 
     plt.close()
 
-
-    # --------------------------------------------------------
     # Box plot
-    #
-    # Shows:
-    #   - median
-    #   - quartiles
-    #   - distribution
-    #   - potential outliers
-    # --------------------------------------------------------
 
     plt.figure(figsize=(12, 7))
 
